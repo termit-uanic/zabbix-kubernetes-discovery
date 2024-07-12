@@ -5,6 +5,7 @@ metadata:
   name: {{ .Values.rbac.name }}
   labels:
     app: {{ .Values.deployment.name }}
+    kind: {{ .Values.deployment.name }}
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.serviceAccount.name }}

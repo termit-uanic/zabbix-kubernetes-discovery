@@ -11,12 +11,26 @@ serviceAccount:
   name: zabbix-kubernetes-discovery
 
 deployment:
-  name: zabbix-kubernetes-discovery
+  name: zabbix-kubernetes
   image:
     name: ghcr.io/axians-acsp/zabbix-kubernetes-discovery:v1.4.2
     pullPolicy: IfNotPresent
   replicas: 1
   strategy: Recreate
+
+list_of_deployments:
+  node:
+    crontab_name: node
+  daemonset:
+    crontab_name: daemonset
+  volume:
+    crontab_name: volume
+  deployment:
+    crontab_name: deployment
+  statefulset:
+    crontab_name: statefulset
+  cronjob:
+    crontab_name: cronjob
 
 environment:
   ZABBIX_ENDPOINT:
@@ -29,6 +43,7 @@ zabbix:
   debug: 'no'
 
 monitoring:
+  global_exclude_namespace: "fr-*, testing"
   node:
     exclude_name: ''
   daemonset:
@@ -48,25 +63,25 @@ monitoring:
     exclude_namespace: ''
 
 crontab:
-  name: zabbix-kubernetes-discovery
+  name: zabbix-kubernetes
   node:
-    discovery: '0 * * * *'
-    item: '*/3 * * * *'
+    discovery: '*/10 * * * *'
+    item: '*/5 * * * *'
   daemonset:
-    discovery: '0 * * * *'
-    item: '*/3 * * * *'
+    discovery: '*/10 * * * *'
+    item: '*/5 * * * *'
   volume:
-    discovery: '0 * * * *'
-    item: '*/3 * * * *'
+    discovery: '*/10 * * * *'
+    item: '*/5 * * * *'
   deployment:
-    discovery: '0 * * * *'
-    item: '*/3 * * * *'
+    discovery: '*/10 * * * *'
+    item: '*/5 * * * *'
   statefulset:
-    discovery: '0 * * * *'
-    item: '*/3 * * * *'
+    discovery: '*/10 * * * *'
+    item: '*/5 * * * *'
   cronjob:
-    discovery: '0 * * * *'
-    item: '*/3 * * * *'
+    discovery: '*/10 * * * *'
+    item: '*/5 * * * *'
 
 resources:
   requests:
@@ -76,6 +91,9 @@ resources:
     cpu: 1000m
     memory: 1Gi
 
-nodeSelector: {}
+nodeSelector:
+  environment: General
+  lifecycle: OnDemand
+  project: DevOps
 tolerations: []
 affinity: {}

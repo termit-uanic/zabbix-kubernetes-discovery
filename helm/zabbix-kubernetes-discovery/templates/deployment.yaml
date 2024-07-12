@@ -1,36 +1,42 @@
+{{- range $name, $deploy := .Values.list_of_deployments }}
+{{- $deployName := $name }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.deployment.name }}
-  namespace: {{ .Values.namespace.name }}
+  name: {{ $.Values.deployment.name }}-{{ $deployName }}
+  namespace: {{ $.Values.namespace.name }}
   labels:
-    app: {{ .Values.deployment.name }}
+    app: {{ $.Values.deployment.name }}-{{ $deployName }}
+    kind: {{ $.Values.deployment.name }}
 spec:
-  replicas: {{ .Values.deployment.replicas }}
+  replicas: {{ $.Values.deployment.replicas }}
   strategy:
-    type: {{ .Values.deployment.strategy }}
+    type: {{ $.Values.deployment.strategy }}
   selector:
     matchLabels:
-      app: {{ .Values.deployment.name }}
+      app: {{ $.Values.deployment.name }}-{{ $deployName }}
+      kind: {{ $.Values.deployment.name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.deployment.name }}
+        app: {{ $.Values.deployment.name }}-{{ $deployName }}
+        kind: {{ $.Values.deployment.name }}
     spec:
-      {{- if .Values.serviceAccount.create }}
-      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- if $.Values.serviceAccount.create }}
+      serviceAccountName: {{ $.Values.serviceAccount.name }}
       {{- end }}
       restartPolicy: Always
       containers:
-      - name: {{ .Values.deployment.name }}
-        image: {{ .Values.deployment.image.name }}
-        imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
+      - name: {{ $.Values.deployment.name }}-{{ $deployName }}
+        image: {{ $.Values.deployment.image.name }}
+        imagePullPolicy: {{ $.Values.deployment.image.pullPolicy }}
         env:
         - name: ZABBIX_ENDPOINT
-          value: {{ .Values.environment.ZABBIX_ENDPOINT }}
+          value: {{ $.Values.environment.ZABBIX_ENDPOINT }}
         - name: KUBERNETES_NAME
-          value: {{ .Values.environment.KUBERNETES_NAME }}
-        {{- if .Values.environment.KUBECONFIG }}
+          value: {{ $.Values.environment.KUBERNETES_NAME }}
+        {{- if $.Values.environment.KUBECONFIG }}
         - name: KUBECONFIG
           valueFrom:
             secretKeyRef:
@@ -38,27 +44,28 @@ spec:
               key: kubeconfig
         {{- end }}
         volumeMounts:
-        - name: crontab
-          mountPath: /app/crontab
-          subPath: crontab
+          - name: crontab
+            mountPath: /app/crontab
+            subPath: crontab
         resources:
-{{ toYaml .Values.resources | indent 10 }}
-      {{- with .Values.nodeSelector }}
+          {{- toYaml $.Values.resources | nindent 10 }}
+      {{- with $.Values.nodeSelector }}
       nodeSelector:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $.Values.tolerations }}
       tolerations:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $.Values.affinity }}
       affinity:
-{{ toYaml . | indent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-      - name: crontab
-        configMap:
-          name: {{ .Values.crontab.name }}
-          items:
-          - key: crontab
-            path: crontab
+        - name: crontab
+          configMap:
+            name: {{ $.Values.crontab.name }}-{{ $deploy.crontab_name }}
+            items:
+            - key: crontab
+              path: crontab
+{{- end }}
