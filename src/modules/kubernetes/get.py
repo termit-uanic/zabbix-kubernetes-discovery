@@ -5,6 +5,25 @@ import json, urllib3
 
 urllib3.disable_warnings()
 
+
+def getNamespaces(global_exclude_namespace=None):
+    """
+    description: get all namespases
+    return: list
+    """
+    kubernetes = client.CoreV1Api()
+
+    namespaces = []
+    for namespace in kubernetes.list_namespace().items:
+        nameNS = namespace.metadata.name
+        if ifObjectMatch(global_exclude_namespace, nameNS):
+            continue
+
+        namespaces.append(nameNS)
+
+    return namespaces
+
+
 def getNode(name=None, exclude_name=None):
     """
     description: get all or specific node
@@ -15,9 +34,13 @@ def getNode(name=None, exclude_name=None):
     nodes = []
 
     for node in kubernetes.list_node().items:
-        node_healthz = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="healthz")
-        node_status  = kubernetes.read_node_status(name=node.metadata.name)
-        node_pods    = kubernetes.list_pod_for_all_namespaces(field_selector="spec.nodeName={}".format(node.metadata.name))
+
+        try:
+            node_healthz = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="healthz")
+            node_status  = kubernetes.read_node_status(name=node.metadata.name)
+            node_pods    = kubernetes.list_pod_for_all_namespaces(field_selector="spec.nodeName={}".format(node.metadata.name))
+        except:
+            continue
 
         json = {
             "name": node.metadata.name,
@@ -46,7 +69,7 @@ def getNode(name=None, exclude_name=None):
     return nodes
 
 
-def getDaemonset(name=None, exclude_name=None, exclude_namespace=None):
+def getDaemonset(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
     """
     description: get all or specific daemonset
     return: list
@@ -55,36 +78,37 @@ def getDaemonset(name=None, exclude_name=None, exclude_namespace=None):
 
     daemonsets = []
 
-    for daemonset in kubernetes.list_daemon_set_for_all_namespaces().items:
+    for namespace in list_namespaces:
+        for daemonset in kubernetes.list_namespaced_daemon_set(namespace).items:
 
-        json = {
-            "name": daemonset.metadata.name,
-            "namespace": daemonset.metadata.namespace,
-            "replicas": {
-                "desired": daemonset.status.desired_number_scheduled,
-                "current": daemonset.status.current_number_scheduled,
-                "available": daemonset.status.number_available,
-                "ready": daemonset.status.number_ready
+            json = {
+                "name": daemonset.metadata.name,
+                "namespace": daemonset.metadata.namespace,
+                "replicas": {
+                    "desired": daemonset.status.desired_number_scheduled,
+                    "current": daemonset.status.current_number_scheduled,
+                    "available": daemonset.status.number_available,
+                    "ready": daemonset.status.number_ready
+                }
             }
-        }
 
-        for i in ["desired", "current", "available", "ready"]:
-            if json['replicas'][i] is None:
-                json['replicas'][i] = 0
+            for i in ["desired", "current", "available", "ready"]:
+                if json['replicas'][i] is None:
+                    json['replicas'][i] = 0
 
-        if ifObjectMatch(exclude_name, json['name']):
-            continue
+            if ifObjectMatch(exclude_name, json['name']):
+                continue
 
-        if ifObjectMatch(exclude_namespace, json['namespace']):
-            continue
+            if ifObjectMatch(exclude_namespace, json['namespace']):
+                continue
 
-        if name == json['name']:
-            return [json]
+            if name == json['name']:
+                return [json]
 
-        if any(d['name'] == json['name'] and d['namespace'] == json['namespace'] for d in daemonsets):
-            continue
+            if any(d['name'] == json['name'] and d['namespace'] == json['namespace'] for d in daemonsets):
+                continue
 
-        daemonsets.append(json)
+            daemonsets.append(json)
 
     return daemonsets
 
@@ -129,7 +153,7 @@ def getVolume(name=None, exclude_name=None, exclude_namespace=None):
 
                 if any(v['name'] == volume['name'] and v['namespace'] == volume['namespace'] for v in volumes):
                     continue
-                
+
                 if "-token-" in volume['name']:
                     continue
 
@@ -138,7 +162,7 @@ def getVolume(name=None, exclude_name=None, exclude_namespace=None):
     return volumes
 
 
-def getDeployment(name=None, exclude_name=None, exclude_namespace=None):
+def getDeployment(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
     """
     description: get all or specific deployment
     return: list
@@ -147,40 +171,41 @@ def getDeployment(name=None, exclude_name=None, exclude_namespace=None):
 
     deployments = []
 
-    for deployment in kubernetes.list_deployment_for_all_namespaces().items:
+    for namespace in list_namespaces:
+        for deployment in kubernetes.list_namespaced_deployment(namespace).items:
 
-        json = {
-            "name": deployment.metadata.name,
-            "namespace": deployment.metadata.namespace,
-            "replicas": {
-                "desired": deployment.status.replicas,
-                "ready": deployment.status.ready_replicas,
-                "available": deployment.status.available_replicas
+            json = {
+                "name": deployment.metadata.name,
+                "namespace": deployment.metadata.namespace,
+                "replicas": {
+                    "desired": deployment.status.replicas,
+                    "ready": deployment.status.ready_replicas,
+                    "available": deployment.status.available_replicas
+                }
             }
-        }
 
-        if ifObjectMatch(exclude_name, json['name']):
-            continue
+            if ifObjectMatch(exclude_name, json['name']):
+                continue
 
-        if ifObjectMatch(exclude_namespace, json['namespace']):
-            continue
+            if ifObjectMatch(exclude_namespace, json['namespace']):
+                continue
 
-        for i in ["desired", "ready", "available"]:
-            if json['replicas'][i] is None:
-                json['replicas'][i] = 0
+            for i in ["desired", "ready", "available"]:
+                if json['replicas'][i] is None:
+                    json['replicas'][i] = 0
 
-        if name == json['name']:
-            return [json]
+            if name == json['name']:
+                return [json]
 
-        if any(d['name'] == json['name'] and d['namespace'] == json['namespace'] for d in deployments):
-            continue
+            if any(d['name'] == json['name'] and d['namespace'] == json['namespace'] for d in deployments):
+                continue
 
-        deployments.append(json)
+            deployments.append(json)
 
     return deployments
 
 
-def getStatefulset(name=None, exclude_name=None, exclude_namespace=None):
+def getStatefulset(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
     """
     description: get all or specific statefulset
     return: list
@@ -189,40 +214,46 @@ def getStatefulset(name=None, exclude_name=None, exclude_namespace=None):
 
     statefulsets = []
 
-    for statefulset in kubernetes.list_stateful_set_for_all_namespaces().items:
+    for namespace in list_namespaces:
+        for statefulset in kubernetes.list_namespaced_stateful_set(namespace).items:
 
-        json = {
-            "name": statefulset.metadata.name,
-            "namespace": statefulset.metadata.namespace,
-            "replicas": {
-                "available": statefulset.status.current_replicas,
-                "ready": statefulset.status.ready_replicas,
-                "desired": statefulset.status.replicas
+            try:
+                available = statefulset.status.current_replicas
+            except:
+                available = 0
+
+            json = {
+                "name": statefulset.metadata.name,
+                "namespace": statefulset.metadata.namespace,
+                "replicas": {
+                    "available": available,
+                    "ready": statefulset.status.ready_replicas,
+                    "desired": statefulset.status.replicas
+                }
             }
-        }
 
-        if ifObjectMatch(exclude_name, json['name']):
-            continue
+            if ifObjectMatch(exclude_name, json['name']):
+                continue
 
-        if ifObjectMatch(exclude_namespace, json['namespace']):
-            continue
+            if ifObjectMatch(exclude_namespace, json['namespace']):
+                continue
 
-        for i in ["desired", "ready", "available"]:
-            if json['replicas'][i] is None:
-                json['replicas'][i] = 0
+            for i in ["desired", "ready", "available"]:
+                if json['replicas'][i] is None:
+                    json['replicas'][i] = 0
 
-        if name == json['name']:
-            return [json]
+            if name == json['name']:
+                return [json]
 
-        if any(s['name'] == json['name'] and s['namespace'] == json['namespace'] for s in statefulsets):
-            continue
+            if any(s['name'] == json['name'] and s['namespace'] == json['namespace'] for s in statefulsets):
+                continue
 
-        statefulsets.append(json)
+            statefulsets.append(json)
 
     return statefulsets
 
 
-def getPodjob(name=None):
+def getPodjob(namespace, name=None, label_selector=None):
     """
     description: get all or specific pod from cronjob
     return: list
@@ -231,7 +262,10 @@ def getPodjob(name=None):
 
     pods = []
 
-    for pod in kubernetes.list_pod_for_all_namespaces().items:
+    for pod in kubernetes.list_namespaced_pod(namespace=namespace, label_selector=label_selector).items:
+
+        if pod.status.phase == 'Pending':
+            continue
 
         if not pod.metadata.owner_references:
             continue
@@ -242,15 +276,26 @@ def getPodjob(name=None):
         if name != pod.status.container_statuses[0].name:
             continue
 
+        exitcode = 0
+        started = datetime.timestamp(datetime.now())
+        finished = datetime.timestamp(datetime.now())
+        reason = "Running"
+
+        if pod.status.phase != 'Running':
+            exitcode = pod.status.container_statuses[0].state.terminated.exit_code
+            started = datetime.timestamp(pod.status.container_statuses[0].state.terminated.started_at)
+            finished = datetime.timestamp(pod.status.container_statuses[0].state.terminated.finished_at)
+            reason = pod.status.container_statuses[0].state.terminated.reason
+
         json = {
             "name": pod.metadata.name,
             "namespace": pod.metadata.namespace,
             "status": {
                 "restart": pod.status.container_statuses[0].restart_count,
-                "exitcode": pod.status.container_statuses[0].state.terminated.exit_code,
-                "started": datetime.timestamp(pod.status.container_statuses[0].state.terminated.started_at),
-                "finished": datetime.timestamp(pod.status.container_statuses[0].state.terminated.finished_at),
-                "reason": pod.status.container_statuses[0].state.terminated.reason
+                "exitcode": exitcode,
+                "started": started,
+                "finished": finished,
+                "reason": reason
             }
         }
 
@@ -259,42 +304,50 @@ def getPodjob(name=None):
     return pods
 
 
-def getCronjob(name=None, exclude_name=None, exclude_namespace=None):
+def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
     """
     description: get all or specific cronjob
     return: list
     """
-    kubernetes = client.BatchV1beta1Api()
+    kubernetes = client.BatchV1Api()
 
     cronjobs = []
 
-    for cronjob in kubernetes.list_cron_job_for_all_namespaces().items:
+    for namespace in list_namespaces:
+        for cronjob in kubernetes.list_namespaced_cron_job(namespace).items:
 
-        pods_created = getPodjob(name=cronjob.metadata.name)
-        pods_finished, pod_latest = [], {}
+            label_selector = None
+            if 'app' in cronjob.metadata.labels:
+                label_selector = f"app={cronjob.metadata.labels['app']}"
 
-        for pod in pods_created:
-            pods_finished.append(pod['status']['finished'])
+            if cronjob.spec.suspend:
+                continue
 
-        for pod in pods_created:
-            if pod['status']['finished'] == sorted(pods_finished)[-1]:
-                pod_latest = pod
+            pods_created = getPodjob(namespace, cronjob.metadata.name, label_selector)
+            pods_finished, pod_latest = [], {}
 
-        json = {
-            "name": cronjob.metadata.name,
-            "namespace": cronjob.metadata.namespace,
-            "status": pod_latest
-        }
+            for pod in pods_created:
+                pods_finished.append(pod['status']['finished'])
 
-        if ifObjectMatch(exclude_name, json['name']):
-            continue
+            for pod in pods_created:
+                if pod['status']['finished'] == sorted(pods_finished)[-1]:
+                    pod_latest = pod
 
-        if ifObjectMatch(exclude_namespace, json['namespace']):
-            continue
+            json = {
+                "name": cronjob.metadata.name,
+                "namespace": cronjob.metadata.namespace,
+                "status": pod_latest
+            }
 
-        if name == json['name']:
-            return [json]
+            if ifObjectMatch(exclude_name, json['name']):
+                continue
 
-        cronjobs.append(json)
+            if ifObjectMatch(exclude_namespace, json['namespace']):
+                continue
+
+            if name == json['name']:
+                return [json]
+
+            cronjobs.append(json)
 
     return cronjobs
