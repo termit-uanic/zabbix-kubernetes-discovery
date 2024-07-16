@@ -12,11 +12,13 @@ def getNamespaces(global_exclude_namespace=None):
     return: list
     """
     kubernetes = client.CoreV1Api()
-
+    if global_exclude_namespace and type(global_exclude_namespace) == str:
+        global_exclude_namespace = global_exclude_namespace.replace(", ", ",")
+    list_global_exclude_namespace = global_exclude_namespace.split(",")
     namespaces = []
     for namespace in kubernetes.list_namespace().items:
         nameNS = namespace.metadata.name
-        if ifObjectMatch(global_exclude_namespace, nameNS):
+        if ifObjectMatch(list_global_exclude_namespace, nameNS):
             continue
 
         namespaces.append(nameNS)
@@ -67,7 +69,6 @@ def getNode(name=None, exclude_name=None):
         nodes.append(json)
 
     return nodes
-
 
 def getDaemonset(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
     """
