@@ -314,30 +314,19 @@ def getJob(namespace, name=None, label_selector=None):
 
     for job in kubernetes.list_namespaced_job(namespace=namespace, label_selector=label_selector).items:
 
-        if job.status.succeeded is None:
-            exitcode = 1
-
-        if job.status.failed is None:
-            exitcode = 0
-
-        if job.status.active == 1:
-            exitcode = 0
-            started = datetime.timestamp(datetime.now())
+        started = datetime.timestamp(job.status.start_time)
+        
+        if job.status.failed != 0 and job.status.failed is not None:
             finished = datetime.timestamp(datetime.now())
-            reason = "Running"
-        else:
-            if job.status.failed != 0 and job.status.failed is not None:
-                exitcode = 1
-            else:
-                exitcode = 0
-            started = datetime.timestamp(job.status.start_time)
-            
-            if job.status.failed != 0 and job.status.failed is not None:
-                finished = datetime.timestamp(datetime.now())
+            if job.status.conditions and job.status.conditions[0].reason:
                 reason = job.status.conditions[0].reason
             else:
-                finished = datetime.timestamp(job.status.completion_time)
-                reason = "Succeeded"
+                reason = "Failed"
+            exitcode = 1
+        else:
+            finished = datetime.timestamp(job.status.completion_time)
+            reason = "Succeeded"
+            exitcode = 0
 
         json = {
             "name": job.metadata.name,
@@ -376,10 +365,21 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                 label_selector = f"app={cronjob.metadata.labels['app']}"
 
             if cronjob.spec.suspend:
+
                 json = {
                     "name": cronjob.metadata.name,
                     "namespace": cronjob.metadata.namespace,
-                    "status": "Suspended",
+                    "status": {
+                        "name": cronjob.metadata.name,
+                        "namespace": cronjob.metadata.namespace,
+                        "status": {
+                            "restart": 0,
+                            "exitcode": 0,
+                            "started": 0,
+                            "finished": 0,
+                            "reason": "Suspended"
+                        }
+                    }
                 }
             
             elif getPodjob(namespace, cronjob.metadata.name, label_selector):
@@ -426,5 +426,4 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                 return [json]
 
             cronjobs.append(json)
-
     return cronjobs
