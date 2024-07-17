@@ -315,9 +315,17 @@ def getJob(namespace, name=None, label_selector=None):
     for job in kubernetes.list_namespaced_job(namespace=namespace, label_selector=label_selector).items:
 
         started = datetime.timestamp(job.status.start_time)
-        
+
+        if job.status.active:
+            finished = started
+            reason = "Running"
+            exitcode = 0
+
         if job.status.failed != 0 and job.status.failed is not None:
-            finished = datetime.timestamp(datetime.now())
+            if job.status.completion_time:
+                finished = datetime.timestamp(job.status.completion_time)
+            else:
+                finished = started
             if job.status.conditions and job.status.conditions[0].reason:
                 reason = job.status.conditions[0].reason
             else:
