@@ -50,7 +50,7 @@ monitoring:
     exclude_name: ''
     exclude_namespace: ''
   volume:
-    exclude_name: ''
+    exclude_name: 'dump-redis-*'
     exclude_namespace: ''
   deployment:
     exclude_name: ''

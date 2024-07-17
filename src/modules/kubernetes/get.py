@@ -321,7 +321,7 @@ def getJob(namespace, name=None, label_selector=None):
             reason = "Running"
             exitcode = 0
 
-        if job.status.failed != 0 and job.status.failed is not None:
+        if job.status.failed:
             if job.status.completion_time:
                 finished = datetime.timestamp(job.status.completion_time)
             else:
