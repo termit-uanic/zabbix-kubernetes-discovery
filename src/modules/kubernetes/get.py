@@ -1,7 +1,7 @@
 from kubernetes import client
 from datetime import datetime
 from modules.common.functions import *
-import json, urllib3
+import json, urllib3, time
 
 urllib3.disable_warnings()
 
@@ -122,44 +122,50 @@ def getVolume(name=None, exclude_name=None, exclude_namespace=None):
     kubernetes = client.CoreV1Api()
 
     volumes = []
+    max_attempts = 3
+    attempt = 0
 
     for node in kubernetes.list_node().items:
-        node_info = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="stats/summary").replace("'", "\"")
-        node_json = json.loads(node_info)
+        while attempt < max_attempts:
+            try:
+                node_info = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="stats/summary").replace("'", "\"")
+                node_json = json.loads(node_info)
 
-        for pod in node_json['pods']:
+                for pod in node_json['pods']:
 
-            if not "volume" in pod:
-                continue
+                    if not "volume" in pod:
+                        continue
 
-            for volume in pod['volume']:
+                    for volume in pod['volume']:
 
-                if not "pvcRef" in volume:
-                    continue
-                else:
-                    volume['namespace'] = volume['pvcRef']['namespace']
-                    volume['name'] = volume['pvcRef']['name']
+                        if not "pvcRef" in volume:
+                            continue
+                        else:
+                            volume['namespace'] = volume['pvcRef']['namespace']
+                            volume['name'] = volume['pvcRef']['name']
 
-                if ifObjectMatch(exclude_name, volume['name']):
-                    continue
+                        if ifObjectMatch(exclude_name, volume['name']):
+                            continue
 
-                if ifObjectMatch(exclude_namespace, volume['namespace']):
-                    continue
+                        if ifObjectMatch(exclude_namespace, volume['namespace']):
+                            continue
 
-                for i in ["time", "pvcRef"]:
-                    del volume[i]
+                        for i in ["time", "pvcRef"]:
+                            del volume[i]
 
-                if name == volume['name']:
-                    return [volume]
+                        if name == volume['name']:
+                            return [volume]
 
-                if any(v['name'] == volume['name'] and v['namespace'] == volume['namespace'] for v in volumes):
-                    continue
+                        if any(v['name'] == volume['name'] and v['namespace'] == volume['namespace'] for v in volumes):
+                            continue
 
-                if "-token-" in volume['name']:
-                    continue
-
-                volumes.append(volume)
-
+                        if "-token-" in volume['name']:
+                            continue
+                        volumes.append(volume)
+                break
+            except client.exceptions.ApiException as e:
+                time.sleep(1)
+                attempt += 1
     return volumes
 
 
