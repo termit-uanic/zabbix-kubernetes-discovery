@@ -301,8 +301,51 @@ def getPodjob(namespace, name=None, label_selector=None):
         }
 
         pods.append(json)
-
     return pods
+
+def getJob(namespace, name=None, label_selector=None):
+    """
+    description: get all or specific job
+    return: list
+    """
+    kubernetes = client.BatchV1Api()
+
+    jobs = []
+
+    for job in kubernetes.list_namespaced_job(namespace=namespace, label_selector=label_selector).items:
+
+        started = datetime.timestamp(job.status.start_time)
+        
+        if job.status.failed != 0 and job.status.failed is not None:
+            finished = datetime.timestamp(datetime.now())
+            if job.status.conditions and job.status.conditions[0].reason:
+                reason = job.status.conditions[0].reason
+            else:
+                reason = "Failed"
+            exitcode = 1
+        else:
+            finished = datetime.timestamp(job.status.completion_time)
+            reason = "Succeeded"
+            exitcode = 0
+
+        json = {
+            "name": job.metadata.name,
+            "namespace": job.metadata.namespace,
+            "status": {
+                "restart": 0,
+                "exitcode": exitcode,
+                "started": started,
+                "finished": finished,
+                "reason": reason
+            }
+        }
+
+        if name == json['name']:
+            return [json]
+
+        jobs.append(json)
+
+    return jobs
 
 
 def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
@@ -322,23 +365,56 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                 label_selector = f"app={cronjob.metadata.labels['app']}"
 
             if cronjob.spec.suspend:
-                continue
 
-            pods_created = getPodjob(namespace, cronjob.metadata.name, label_selector)
-            pods_finished, pod_latest = [], {}
+                json = {
+                    "name": cronjob.metadata.name,
+                    "namespace": cronjob.metadata.namespace,
+                    "status": {
+                        "name": cronjob.metadata.name,
+                        "namespace": cronjob.metadata.namespace,
+                        "status": {
+                            "restart": 0,
+                            "exitcode": 0,
+                            "started": 0,
+                            "finished": 0,
+                            "reason": "Suspended"
+                        }
+                    }
+                }
+            
+            elif getPodjob(namespace, cronjob.metadata.name, label_selector):
+                pods_created = getPodjob(namespace, cronjob.metadata.name, label_selector)
+                pods_finished, pod_latest = [], {}
 
-            for pod in pods_created:
-                pods_finished.append(pod['status']['finished'])
+                for pod in pods_created:
+                    pods_finished.append(pod['status']['finished'])
 
-            for pod in pods_created:
-                if pod['status']['finished'] == sorted(pods_finished)[-1]:
-                    pod_latest = pod
+                for pod in pods_created:
+                    if pod['status']['finished'] == sorted(pods_finished)[-1]:
+                        pod_latest = pod
 
-            json = {
-                "name": cronjob.metadata.name,
-                "namespace": cronjob.metadata.namespace,
-                "status": pod_latest
-            }
+                json = {
+                    "name": cronjob.metadata.name,
+                    "namespace": cronjob.metadata.namespace,
+                    "status": pod_latest
+                }
+
+            else:
+                jobs_created = getJob(namespace, cronjob.metadata.name, label_selector)
+                jobs_finished, job_latest = [], {}
+
+                for job in jobs_created:
+                    jobs_finished.append(job['status']['finished'])
+
+                for job in jobs_created:
+                    if job['status']['finished'] == sorted(jobs_finished)[-1]:
+                        job_latest = job
+
+                json = {
+                    "name": cronjob.metadata.name,
+                    "namespace": cronjob.metadata.namespace,
+                    "status": job_latest
+                }
 
             if ifObjectMatch(exclude_name, json['name']):
                 continue
@@ -350,5 +426,4 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                 return [json]
 
             cronjobs.append(json)
-
     return cronjobs
