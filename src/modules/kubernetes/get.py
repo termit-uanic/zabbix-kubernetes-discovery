@@ -182,7 +182,7 @@ def getDeployment(list_namespaces, name=None, exclude_name=None, exclude_namespa
 
     for namespace in list_namespaces:
         for deployment in kubernetes.list_namespaced_deployment(namespace).items:
-            
+
             json = {
                 "name": deployment.metadata.name,
                 "namespace": deployment.metadata.namespace,
@@ -201,7 +201,6 @@ def getDeployment(list_namespaces, name=None, exclude_name=None, exclude_namespa
 
             for i in ["desired", "ready", "available"]:
                 if json['replicas'][i] is None:
-                    print("JSON: ", json)
                     json['replicas'][i] = 0
 
             if name == json['name']:
@@ -398,7 +397,7 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                         }
                     }
                 }
-            
+
             elif getPodjob(namespace, cronjob.metadata.name, label_selector):
                 pods_created = getPodjob(namespace, cronjob.metadata.name, label_selector)
                 pods_finished, pod_latest = [], {}
