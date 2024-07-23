@@ -142,7 +142,7 @@ def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=N
                         else:
                             volume['namespace'] = volume['pvcRef']['namespace']
                             volume['name'] = volume['pvcRef']['name']
-                        
+
                         if volume['namespace'] not in list_namespaces:
                             continue
 
@@ -330,7 +330,11 @@ def getJob(namespace, name=None, label_selector=None):
             reason = "Running"
             exitcode = 0
 
-        if job.status.failed:
+        if job.status.succeeded:
+            finished = datetime.timestamp(job.status.completion_time)
+            reason = "Succeeded"
+            exitcode = 0
+        elif job.status.failed:
             if job.status.completion_time:
                 finished = datetime.timestamp(job.status.completion_time)
             else:
@@ -340,10 +344,6 @@ def getJob(namespace, name=None, label_selector=None):
             else:
                 reason = "Failed"
             exitcode = 1
-        else:
-            finished = datetime.timestamp(job.status.completion_time)
-            reason = "Succeeded"
-            exitcode = 0
 
         json = {
             "name": job.metadata.name,
