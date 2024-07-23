@@ -22,7 +22,6 @@ def getNamespaces(global_exclude_namespace=None):
             continue
 
         namespaces.append(nameNS)
-
     return namespaces
 
 
@@ -114,7 +113,7 @@ def getDaemonset(list_namespaces, name=None, exclude_name=None, exclude_namespac
     return daemonsets
 
 
-def getVolume(name=None, exclude_name=None, exclude_namespace=None):
+def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
     """
     description: get all or specific persistent volume claim
     return: list
@@ -143,6 +142,9 @@ def getVolume(name=None, exclude_name=None, exclude_namespace=None):
                         else:
                             volume['namespace'] = volume['pvcRef']['namespace']
                             volume['name'] = volume['pvcRef']['name']
+                        
+                        if volume['namespace'] not in list_namespaces:
+                            continue
 
                         if ifObjectMatch(exclude_name, volume['name']):
                             continue
@@ -180,7 +182,7 @@ def getDeployment(list_namespaces, name=None, exclude_name=None, exclude_namespa
 
     for namespace in list_namespaces:
         for deployment in kubernetes.list_namespaced_deployment(namespace).items:
-
+            
             json = {
                 "name": deployment.metadata.name,
                 "namespace": deployment.metadata.namespace,
@@ -199,6 +201,7 @@ def getDeployment(list_namespaces, name=None, exclude_name=None, exclude_namespa
 
             for i in ["desired", "ready", "available"]:
                 if json['replicas'][i] is None:
+                    print("JSON: ", json)
                     json['replicas'][i] = 0
 
             if name == json['name']:

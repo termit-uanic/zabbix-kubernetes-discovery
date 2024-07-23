@@ -87,13 +87,13 @@ if __name__ == "__main__":
     if args.monitoring_mode == "volume":
         if args.monitoring_type == "json":
             print("JSON output (volume): {}".format(
-                getVolume(args.object_name, args.exclude_name, args.exclude_namespace)))
+                getVolume(listNamespaces, args.object_name, args.exclude_name, args.exclude_namespace)))
         if args.monitoring_type == "discovery":
             print("Zabbix discovery (volume): {}".format(
-                zabbix.send(zabbixDiscoveryVolume(args.kubernetes_name, getVolume(args.object_name, args.exclude_name, args.exclude_namespace)))))
+                zabbix.send(zabbixDiscoveryVolume(listNamespaces, args.kubernetes_name, getVolume(args.object_name, args.exclude_name, args.exclude_namespace)))))
         if args.monitoring_type == "item":
             print("Zabbix item (volume): {}".format(
-                zabbix.send(zabbixItemVolume(args.kubernetes_name, getVolume(args.object_name, args.exclude_name, args.exclude_namespace)))))
+                zabbix.send(zabbixItemVolume(listNamespaces, args.kubernetes_name, getVolume(args.object_name, args.exclude_name, args.exclude_namespace)))))
     
     # Deployment
     if args.monitoring_mode == "deployment":
