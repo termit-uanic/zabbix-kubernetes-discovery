@@ -93,7 +93,7 @@ if __name__ == "__main__":
                 zabbix.send(zabbixDiscoveryVolume(args.kubernetes_name, getVolume(listNamespaces, args.object_name, args.exclude_name, args.exclude_namespace)))))
         if args.monitoring_type == "item":
             print("Zabbix item (volume): {}".format(
-                zabbix.send(zabbixItemVolume(listNamespaces, args.kubernetes_name, getVolume(listNamespaces, args.object_name, args.exclude_name, args.exclude_namespace)))))
+                zabbix.send(zabbixItemVolume(args.kubernetes_name, getVolume(listNamespaces, args.object_name, args.exclude_name, args.exclude_namespace)))))
     
     # Deployment
     if args.monitoring_mode == "deployment":
