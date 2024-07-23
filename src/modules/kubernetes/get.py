@@ -22,7 +22,6 @@ def getNamespaces(global_exclude_namespace=None):
             continue
 
         namespaces.append(nameNS)
-
     return namespaces
 
 
@@ -114,7 +113,7 @@ def getDaemonset(list_namespaces, name=None, exclude_name=None, exclude_namespac
     return daemonsets
 
 
-def getVolume(name=None, exclude_name=None, exclude_namespace=None):
+def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=None):
     """
     description: get all or specific persistent volume claim
     return: list
@@ -143,6 +142,9 @@ def getVolume(name=None, exclude_name=None, exclude_namespace=None):
                         else:
                             volume['namespace'] = volume['pvcRef']['namespace']
                             volume['name'] = volume['pvcRef']['name']
+
+                        if volume['namespace'] not in list_namespaces:
+                            continue
 
                         if ifObjectMatch(exclude_name, volume['name']):
                             continue
@@ -395,7 +397,7 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                         }
                     }
                 }
-            
+
             elif getPodjob(namespace, cronjob.metadata.name, label_selector):
                 pods_created = getPodjob(namespace, cronjob.metadata.name, label_selector)
                 pods_finished, pod_latest = [], {}
