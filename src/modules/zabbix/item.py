@@ -45,7 +45,7 @@ def zabbixItemVolume(clustername, volumes=[]):
     """
     sender = []
 
-    for volume in volumes: 
+    for volume in volumes:
         sender.append(ZabbixMetric(clustername, f"kubernetes.volumeclaim.availableBytes[{volume['namespace']},{volume['name']}]", volume['availableBytes']),)
         sender.append(ZabbixMetric(clustername, f"kubernetes.volumeclaim.capacityBytes[{volume['namespace']},{volume['name']}]", volume['capacityBytes']),)
         sender.append(ZabbixMetric(clustername, f"kubernetes.volumeclaim.usedBytes[{volume['namespace']},{volume['name']}]", volume['usedBytes']),)
@@ -64,9 +64,12 @@ def zabbixItemDeployment(clustername, deployments=[]):
     sender = []
 
     for deployment in deployments:
+        isDeployed = 1 if deployment['replicas']['desired'] == deployment['replicas']['ready'] else 0
+
         sender.append(ZabbixMetric(clustername, f"kubernetes.deployment.availableReplicas[{deployment['namespace']},{deployment['name']}]", deployment['replicas']['available']),)
         sender.append(ZabbixMetric(clustername, f"kubernetes.deployment.readyReplicas[{deployment['namespace']},{deployment['name']}]", deployment['replicas']['ready']),)
         sender.append(ZabbixMetric(clustername, f"kubernetes.deployment.desiredReplicas[{deployment['namespace']},{deployment['name']}]", deployment['replicas']['desired']),)
+        sender.append(ZabbixMetric(clustername, f"kubernetes.deployment.isDeployed[{deployment['namespace']},{deployment['name']}]", isDeployed),)
 
     return sender
 
@@ -79,9 +82,12 @@ def zabbixItemStatefulset(clustername, statefulsets=[]):
     sender = []
 
     for statefulset in statefulsets:
+        isDeployed = 1 if statefulset['replicas']['desired'] == statefulset['replicas']['ready'] else 0
+
         sender.append(ZabbixMetric(clustername, f"kubernetes.statefulset.availableReplicas[{statefulset['namespace']},{statefulset['name']}]", statefulset['replicas']['available']),)
         sender.append(ZabbixMetric(clustername, f"kubernetes.statefulset.readyReplicas[{statefulset['namespace']},{statefulset['name']}]", statefulset['replicas']['ready']),)
         sender.append(ZabbixMetric(clustername, f"kubernetes.statefulset.desiredReplicas[{statefulset['namespace']},{statefulset['name']}]", statefulset['replicas']['desired']),)
+        sender.append(ZabbixMetric(clustername, f"kubernetes.statefulset.isDeployed[{statefulset['namespace']},{statefulset['name']}]", isDeployed),)
 
     return sender
 
