@@ -94,7 +94,7 @@ if __name__ == "__main__":
         if args.monitoring_type == "item":
             print("Zabbix item (volume): {}".format(
                 zabbix.send(zabbixItemVolume(args.kubernetes_name, getVolume(listNamespaces, args.object_name, args.exclude_name, args.exclude_namespace)))))
-    
+
     # Deployment
     if args.monitoring_mode == "deployment":
         if args.monitoring_type == "json":
