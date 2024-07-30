@@ -122,16 +122,15 @@ def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=N
 
     volumes = []
     max_attempts = 3
-    attempt = 0
 
     for node in kubernetes.list_node().items:
-        while attempt < max_attempts:
-            try:
+        try:
+            attempt = 0
+            while attempt < max_attempts:
                 node_info = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="stats/summary").replace("'", "\"")
                 node_json = json.loads(node_info)
 
                 for pod in node_json['pods']:
-
                     if not "volume" in pod:
                         continue
 
@@ -165,9 +164,11 @@ def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=N
                             continue
                         volumes.append(volume)
                 break
-            except client.exceptions.ApiException as e:
-                time.sleep(1)
-                attempt += 1
+        except (urllib3.exceptions.MaxRetryError, client.exceptions.ApiException) as e:
+            time.sleep(1)
+            attempt += 1
+            if attempt == max_attempts:
+                raise e
     return volumes
 
 
