@@ -41,7 +41,7 @@ else:
         print("Unable to find kubernetes cluster configuration")
         sys.exit(1)
 
-zabbix = ZabbixSender(args.zabbix_endpoint)
+zabbix = ZabbixSender(args.zabbix_endpoint, chunk_size=20)
 if args.zabbix_timeout: zabbix.timeout = int(args.zabbix_timeout)
 if args.verbose:
     print(f"Zabbix endpoint: {args.zabbix_endpoint}")
