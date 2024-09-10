@@ -1,10 +1,16 @@
 from kubernetes import client
 from datetime import datetime
 from modules.common.functions import *
-import json, urllib3, time
+import json, urllib3, time, signal
 
 urllib3.disable_warnings()
+class TimeoutException(Exception):
+    pass
 
+def timeout_handler(signum, frame):
+    raise TimeoutException("Timed out")
+
+signal.signal(signal.SIGALRM, timeout_handler)
 
 def getNamespaces(global_exclude_namespace=None):
     """
@@ -120,15 +126,27 @@ def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=N
     """
     kubernetes = client.CoreV1Api()
 
+    nodes = kubernetes.list_node().items
+
     volumes = []
     max_attempts = 3
 
-    for node in kubernetes.list_node().items:
+    for node in nodes:
         try:
             attempt = 0
             while attempt < max_attempts:
-                node_info = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="stats/summary").replace("'", "\"")
-                node_json = json.loads(node_info)
+                try:
+                    signal.alarm(3)
+                    try:
+                        node_info = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="stats/summary").replace("'", "\"")
+                        node_json = json.loads(node_info)
+                    finally:
+                        signal.alarm(0)
+                except TimeoutException:
+                    attempt += 1
+                    continue
+                except (urllib3.exceptions.ReadTimeoutError, urllib3.exceptions.MaxRetryError, client.exceptions.ApiException) as e:
+                    attempt += 1
 
                 for pod in node_json['pods']:
                     if not "volume" in pod:
@@ -381,8 +399,7 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
             if 'app' in cronjob.metadata.labels:
                 label_selector = f"app={cronjob.metadata.labels['app']}"
 
-            if cronjob.spec.suspend:
-
+            if cronjob.spec.suspend == 'true':
                 json = {
                     "name": cronjob.metadata.name,
                     "namespace": cronjob.metadata.namespace,
@@ -396,6 +413,18 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                             "finished": 0,
                             "reason": "Suspended"
                         }
+                    }
+                }
+            elif cronjob.spec.suspend == 'false' and getPodjob(namespace, cronjob.metadata.name, label_selector) == [] and getJob(namespace, cronjob.metadata.name, label_selector) == []:
+                json = {
+                    "name": cronjob.metadata.name,
+                    "namespace": cronjob.metadata.namespace,
+                    "status": {
+                        "restart": 0,
+                        "exitcode": 0,
+                        "started": 0,
+                        "finished": 0,
+                        "reason": "Old job"
                     }
                 }
 
