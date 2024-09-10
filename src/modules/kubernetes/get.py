@@ -394,12 +394,11 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
 
     for namespace in list_namespaces:
         for cronjob in kubernetes.list_namespaced_cron_job(namespace).items:
-
             label_selector = None
             if 'app' in cronjob.metadata.labels:
                 label_selector = f"app={cronjob.metadata.labels['app']}"
 
-            if cronjob.spec.suspend == 'true':
+            if cronjob.spec.suspend == True:
                 json = {
                     "name": cronjob.metadata.name,
                     "namespace": cronjob.metadata.namespace,
@@ -415,16 +414,20 @@ def getCronjob(list_namespaces, name=None, exclude_name=None, exclude_namespace=
                         }
                     }
                 }
-            elif cronjob.spec.suspend == 'false' and getPodjob(namespace, cronjob.metadata.name, label_selector) == [] and getJob(namespace, cronjob.metadata.name, label_selector) == []:
+            elif cronjob.spec.suspend == False and getPodjob(namespace, cronjob.metadata.name, label_selector) == [] and getJob(namespace, cronjob.metadata.name, label_selector) == []:
                 json = {
                     "name": cronjob.metadata.name,
                     "namespace": cronjob.metadata.namespace,
                     "status": {
-                        "restart": 0,
-                        "exitcode": 0,
-                        "started": 0,
-                        "finished": 0,
-                        "reason": "Old job"
+                        "name": cronjob.metadata.name,
+                        "namespace": cronjob.metadata.namespace,
+                        "status": {
+                            "restart": 0,
+                            "exitcode": 0,
+                            "started": 0,
+                            "finished": 0,
+                            "reason": "Old job"
+                        }
                     }
                 }
 
