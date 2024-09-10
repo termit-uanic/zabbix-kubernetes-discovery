@@ -148,8 +148,6 @@ def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=N
                 except (urllib3.exceptions.ReadTimeoutError, urllib3.exceptions.MaxRetryError, client.exceptions.ApiException) as e:
                     attempt += 1
 
-                    # continue
-
                 for pod in node_json['pods']:
                     if not "volume" in pod:
                         continue
@@ -187,7 +185,6 @@ def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=N
         except (urllib3.exceptions.MaxRetryError, client.exceptions.ApiException) as e:
             time.sleep(1)
             attempt += 1
-
             if attempt == max_attempts:
                 raise e
     return volumes
