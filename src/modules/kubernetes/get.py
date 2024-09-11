@@ -136,7 +136,7 @@ def getVolume(list_namespaces, name=None, exclude_name=None, exclude_namespace=N
             attempt = 0
             while attempt < max_attempts:
                 try:
-                    signal.alarm(3)
+                    signal.alarm(15)
                     try:
                         node_info = kubernetes.connect_get_node_proxy_with_path(name=node.metadata.name, path="stats/summary").replace("'", "\"")
                         node_json = json.loads(node_info)
